@@ -1,11 +1,17 @@
 """Main application entry point for Turbo Whisper."""
 
-import fcntl
 import os
 import subprocess
 import sys
+import tempfile
 import threading
 import time
+
+# Platform-specific imports for single-instance locking
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
 
 from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction
@@ -112,12 +118,13 @@ class RecordingWindow(QWidget):
         self.setWindowIcon(get_tray_icon(128, recording=False))
 
         # Frameless, always on top, floating window that doesn't steal focus
-        self.setWindowFlags(
+        # Store base flags for toggling focus behavior
+        self._base_window_flags = (
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
-            | Qt.WindowType.WindowDoesNotAcceptFocus
         )
+        self.setWindowFlags(self._base_window_flags | Qt.WindowType.WindowDoesNotAcceptFocus)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)  # Don't steal focus
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Never accept keyboard focus
@@ -573,6 +580,10 @@ class RecordingWindow(QWidget):
             self.setFixedSize(self.config.window_width, self.config.window_height)
             # Stop Claude status updates
             self._claude_status_timer.stop()
+            # Restore no-focus behavior for recording
+            self.setWindowFlags(self._base_window_flags | Qt.WindowType.WindowDoesNotAcceptFocus)
+            self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.show()  # setWindowFlags hides the window, so re-show it
         else:
             self.settings_panel.show()
             self.settings_btn.setIcon(get_chevron_up_icon(20, "#84cc16"))
@@ -581,6 +592,11 @@ class RecordingWindow(QWidget):
             # Refresh Claude status and start auto-update timer
             self._update_claude_status()
             self._claude_status_timer.start()
+            # Allow focus so user can edit settings
+            self.setWindowFlags(self._base_window_flags)
+            self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            self.show()  # setWindowFlags hides the window, so re-show it
+            self.activateWindow()  # Bring to front and activate
 
     def _update_api_key_display(self) -> None:
         """Update the API key display based on visibility."""
@@ -1019,7 +1035,7 @@ class TurboWhisper:
         menu.addSeparator()
 
         settings_action = QAction("Settings...", menu)
-        settings_action.setEnabled(False)  # TODO: Implement settings UI
+        settings_action.triggered.connect(self._show_settings)
         menu.addAction(settings_action)
 
         menu.addSeparator()
@@ -1055,7 +1071,7 @@ class TurboWhisper:
             wf.writeframes(audio_data)
 
     def _show_window(self) -> None:
-        """Show the window without starting recording."""
+        """Show the window without starting recording (doesn't steal focus)."""
         self.window.waveform.set_recording(False)
         self.window.set_recording_hint(recording=False)
         self._update_icons(recording=False)
@@ -1063,6 +1079,16 @@ class TurboWhisper:
         self.window.center_on_screen()
         self.window.show()
         self.window.raise_()
+        # Note: Don't call activateWindow() - keeps focus in user's original app
+
+    def _show_settings(self) -> None:
+        """Show the window with settings panel expanded (takes focus for editing)."""
+        self._show_window()
+        # Expand settings if not already visible
+        if not self.window.settings_panel.isVisible():
+            self.window._toggle_settings()
+        # Take focus so user can edit settings fields
+        self.window.activateWindow()
 
     def _toggle_recording(self) -> None:
         """Toggle recording state."""
@@ -1084,8 +1110,14 @@ class TurboWhisper:
         self.window.waveform.set_recording(True)
         self.window.set_recording_hint(recording=True)
         self.window.set_status("Listening", animate=True)
+
+        # Hide settings panel if open (it changes window focus behavior)
+        if self.window.settings_panel.isVisible():
+            self.window._toggle_settings()
+
         self.window.center_on_screen()
         self.window.show()
+        self.window.raise_()
 
         # Start waveform polling timer
         self._pending_waveform_data = None
@@ -1325,19 +1357,36 @@ _lock_fd = None  # Global to keep lock file descriptor open
 def ensure_single_instance():
     """Ensure only one instance of the app is running."""
     global _lock_fd
-    lock_path = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "turbo-whisper.lock")
 
-    try:
-        # Open with O_CREAT to create if doesn't exist, O_WRONLY for writing
-        _lock_fd = os.open(lock_path, os.O_CREAT | os.O_WRONLY, 0o644)
-        # Try to acquire exclusive lock (non-blocking)
-        fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        # Write PID
-        os.ftruncate(_lock_fd, 0)
-        os.write(_lock_fd, str(os.getpid()).encode())
-    except OSError:
-        print("Turbo Whisper is already running.")
-        sys.exit(0)
+    if sys.platform == "win32":
+        # Windows: use msvcrt.locking
+        lock_path = os.path.join(tempfile.gettempdir(), "turbo-whisper.lock")
+        try:
+            # Open/create lock file (kept open to hold the lock)
+            _lock_fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
+            # Try to acquire exclusive lock (non-blocking)
+            msvcrt.locking(_lock_fd, msvcrt.LK_NBLCK, 1)
+            # Write PID
+            os.lseek(_lock_fd, 0, os.SEEK_SET)
+            os.ftruncate(_lock_fd, 0)
+            os.write(_lock_fd, str(os.getpid()).encode())
+        except OSError:
+            print("Turbo Whisper is already running.")
+            sys.exit(0)
+    else:
+        # Unix: use fcntl.flock
+        lock_path = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "turbo-whisper.lock")
+        try:
+            # Open with O_CREAT to create if doesn't exist (kept open to hold the lock)
+            _lock_fd = os.open(lock_path, os.O_CREAT | os.O_WRONLY, 0o644)
+            # Try to acquire exclusive lock (non-blocking)
+            fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            # Write PID
+            os.ftruncate(_lock_fd, 0)
+            os.write(_lock_fd, str(os.getpid()).encode())
+        except OSError:
+            print("Turbo Whisper is already running.")
+            sys.exit(0)
 
 
 def main():
