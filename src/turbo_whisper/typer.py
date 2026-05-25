@@ -168,7 +168,7 @@ class Typer:
             return self._type_linux(text)
 
     def _type_pyautogui(self, text: str) -> bool:
-        """Type text using PyAutoGUI (Windows/macOS)."""
+        """Paste text using PyAutoGUI (Windows/macOS)."""
         try:
             import time
 
@@ -176,10 +176,17 @@ class Typer:
 
             # Small delay to let focus settle
             time.sleep(0.1)
-            pyautogui.write(text, interval=0.01)
+
+            # Clipboard paste handles Unicode text reliably, unlike key-by-key
+            # typing which is limited by keyboard layout and input method.
+            if not self.copy_to_clipboard(text):
+                return False
+
+            paste_modifier = "command" if self.system == "Darwin" else "ctrl"
+            pyautogui.hotkey(paste_modifier, "v")
             return True
         except Exception as e:
-            print(f"PyAutoGUI typing error: {e}")
+            print(f"PyAutoGUI paste error: {e}")
             return self.copy_to_clipboard(text)
 
     def _type_linux(self, text: str) -> bool:

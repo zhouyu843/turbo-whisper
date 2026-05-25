@@ -1106,7 +1106,8 @@ class TurboWhisper:
         self.toggle_action.setText("Stop Recording")
         self._update_icons(recording=True)
 
-        # Show window (don't steal focus from current app)
+        # Show window only when configured. On macOS, even non-activating helper
+        # windows can disturb the focused text field in some apps.
         self.window.waveform.set_recording(True)
         self.window.set_recording_hint(recording=True)
         self.window.set_status("Listening", animate=True)
@@ -1115,13 +1116,15 @@ class TurboWhisper:
         if self.window.settings_panel.isVisible():
             self.window._toggle_settings()
 
-        self.window.center_on_screen()
-        self.window.show()
-        self.window.raise_()
+        if self.config.show_window_on_recording:
+            self.window.center_on_screen()
+            self.window.show()
+            self.window.raise_()
 
         # Start waveform polling timer
         self._pending_waveform_data = None
-        self._waveform_timer.start()
+        if self.config.show_window_on_recording:
+            self._waveform_timer.start()
 
         # Start recording
         self.recorder.start(level_callback=self._on_audio_level)

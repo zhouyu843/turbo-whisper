@@ -1,6 +1,7 @@
 """Global hotkey handling with platform-specific backends."""
 
 import os
+import sys
 import threading
 import time
 from typing import Callable
@@ -315,9 +316,155 @@ class HotkeyManager:
             self.listener = None
 
 
+class MacEventTapHotkeyManager:
+    """macOS global hotkey manager that suppresses the matched key event."""
+
+    # macOS virtual key codes for the non-modifier keys Turbo Whisper supports.
+    _KEY_CODES = {
+        "space": 49,
+        "tab": 48,
+        "enter": 36,
+        "esc": 53,
+        "backspace": 51,
+        "f1": 122,
+        "f2": 120,
+        "f3": 99,
+        "f4": 118,
+        "f5": 96,
+        "f6": 97,
+        "f7": 98,
+        "f8": 100,
+        "f9": 101,
+        "f10": 109,
+        "f11": 103,
+        "f12": 111,
+    }
+
+    def __init__(self, hotkey_combo: list[str], callback: Callable[[], None]):
+        import Quartz
+
+        self._quartz = Quartz
+        self.callback = callback
+        self.hotkey_combo = hotkey_combo
+        self._running = False
+        self._thread = None
+        self._run_loop = None
+        self._event_tap = None
+        self._run_loop_source = None
+        self._last_trigger = 0
+        self._debounce_ms = 300
+        self._required_flags, self._trigger_keycode = self._parse_hotkey(hotkey_combo)
+
+    def _parse_hotkey(self, combo: list[str]) -> tuple[int, int]:
+        """Parse a macOS hotkey into required flags and one trigger keycode."""
+        q = self._quartz
+        modifier_flags = {
+            "alt": q.kCGEventFlagMaskAlternate,
+            "alt_l": q.kCGEventFlagMaskAlternate,
+            "alt_r": q.kCGEventFlagMaskAlternate,
+            "ctrl": q.kCGEventFlagMaskControl,
+            "ctrl_l": q.kCGEventFlagMaskControl,
+            "ctrl_r": q.kCGEventFlagMaskControl,
+            "shift": q.kCGEventFlagMaskShift,
+            "shift_l": q.kCGEventFlagMaskShift,
+            "shift_r": q.kCGEventFlagMaskShift,
+            "cmd": q.kCGEventFlagMaskCommand,
+            "super": q.kCGEventFlagMaskCommand,
+        }
+
+        required_flags = 0
+        trigger_keycode = None
+
+        for key_name in combo:
+            key_lower = key_name.lower()
+            if key_lower in modifier_flags:
+                required_flags |= modifier_flags[key_lower]
+            elif key_lower in self._KEY_CODES:
+                if trigger_keycode is not None:
+                    raise ValueError("macOS hotkeys must contain exactly one non-modifier key")
+                trigger_keycode = self._KEY_CODES[key_lower]
+            else:
+                raise ValueError(f"Unsupported macOS hotkey key '{key_name}'")
+
+        if trigger_keycode is None:
+            raise ValueError("macOS hotkeys must contain one non-modifier key")
+
+        return required_flags, trigger_keycode
+
+    def _event_callback(self, proxy, event_type, event, refcon):
+        """Handle and suppress matching key events before they reach the focused app."""
+        q = self._quartz
+
+        if event_type in (
+            q.kCGEventTapDisabledByTimeout,
+            q.kCGEventTapDisabledByUserInput,
+        ):
+            if self._event_tap:
+                q.CGEventTapEnable(self._event_tap, True)
+            return event
+
+        if event_type not in (q.kCGEventKeyDown, q.kCGEventKeyUp):
+            return event
+
+        keycode = q.CGEventGetIntegerValueField(event, q.kCGKeyboardEventKeycode)
+        flags = q.CGEventGetFlags(event)
+        flags_match = (flags & self._required_flags) == self._required_flags
+        if keycode != self._trigger_keycode or not flags_match:
+            return event
+
+        if event_type == q.kCGEventKeyDown:
+            now = time.time() * 1000
+            if now - self._last_trigger > self._debounce_ms:
+                self._last_trigger = now
+                self.callback()
+
+        return None
+
+    def _run_loop_thread(self) -> None:
+        """Install the event tap and run its CFRunLoop."""
+        q = self._quartz
+        mask = q.CGEventMaskBit(q.kCGEventKeyDown) | q.CGEventMaskBit(q.kCGEventKeyUp)
+
+        self._event_tap = q.CGEventTapCreate(
+            q.kCGSessionEventTap,
+            q.kCGHeadInsertEventTap,
+            q.kCGEventTapOptionDefault,
+            mask,
+            self._event_callback,
+            None,
+        )
+        if not self._event_tap:
+            print("macOS event tap unavailable - check Input Monitoring permission")
+            self._running = False
+            return
+
+        self._run_loop = q.CFRunLoopGetCurrent()
+        self._run_loop_source = q.CFMachPortCreateRunLoopSource(None, self._event_tap, 0)
+        q.CFRunLoopAddSource(self._run_loop, self._run_loop_source, q.kCFRunLoopCommonModes)
+        q.CGEventTapEnable(self._event_tap, True)
+        q.CFRunLoopRun()
+
+    def start(self) -> None:
+        """Start listening for hotkeys."""
+        if self._running:
+            return
+
+        self._running = True
+        self._thread = threading.Thread(target=self._run_loop_thread, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        """Stop listening for hotkeys."""
+        self._running = False
+        if self._run_loop:
+            self._quartz.CFRunLoopStop(self._run_loop)
+            self._run_loop = None
+        self._thread = None
+
+
 def create_hotkey_manager(
     hotkey_combo: list[str], callback: Callable[[], None]
-) -> HotkeyManager | PortalHotkeyManager | None:
+) -> HotkeyManager | PortalHotkeyManager | MacEventTapHotkeyManager | None:
     """
     Create appropriate hotkey manager for the current platform.
 
@@ -338,5 +485,14 @@ def create_hotkey_manager(
         except Exception as e:
             print(f"Portal hotkeys unavailable: {e}")
             return None
+    elif sys.platform == "darwin":
+        try:
+            manager = MacEventTapHotkeyManager(hotkey_combo, callback)
+            print("Using macOS event tap for global hotkeys")
+            return manager
+        except Exception as e:
+            print(f"macOS event tap unavailable: {e}")
+            print("Falling back to pynput global hotkeys")
+            return HotkeyManager(hotkey_combo, callback)
     else:
         return HotkeyManager(hotkey_combo, callback)

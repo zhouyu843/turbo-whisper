@@ -53,6 +53,7 @@ class Config:
     background_color: str = "#1a1a2e"
     window_width: int = 520
     window_height: int = 260  # Taller window for bigger waveform
+    show_window_on_recording: bool = True
 
     # Behavior
     auto_paste: bool = True
