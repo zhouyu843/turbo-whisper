@@ -1031,6 +1031,7 @@ class TurboWhisper:
         # State
         self.is_recording = False
         self._pending_waveform_data = None  # Thread-safe buffer for waveform data
+        self._focus_target = None  # App that had focus when recording started (macOS)
 
         # Connect signals
         self.signals.toggle_recording.connect(self._toggle_recording)
@@ -1185,6 +1186,11 @@ class TurboWhisper:
         if self.is_recording:
             return
 
+        # Remember focused app before the recording UI appears (macOS can steal focus).
+        from .focus import capture_focus
+
+        self._focus_target = capture_focus()
+
         self.is_recording = True
         self.toggle_action.setText("Stop Recording")
         self._update_icons(recording=True)
@@ -1231,6 +1237,11 @@ class TurboWhisper:
         self.window.waveform.set_recording(False)
         self.window.hide()
 
+        from .focus import restore_focus
+
+        restore_focus(self._focus_target)
+        self._focus_target = None
+
         self.tray.showMessage(
             "Turbo Whisper",
             "Recording cancelled",
@@ -1257,6 +1268,10 @@ class TurboWhisper:
 
         # Stop recording and get audio
         audio_data = self.recorder.stop()
+
+        from .focus import restore_focus
+
+        restore_focus(self._focus_target)
 
         # Save audio to file if configured
         audio_filename = None
@@ -1357,35 +1372,37 @@ class TurboWhisper:
             if self.config.copy_to_clipboard:
                 self.typer.copy_to_clipboard(text)
 
-            # Type into focused window (wait for Claude if running)
+            from .focus import restore_focus
+
+            restore_focus(self._focus_target)
+
+            typed = False
+            claude_busy = False
             if self.config.auto_paste:
                 if self._wait_for_claude_ready():
-                    self.typer.type_text(text)
-                    self.tray.showMessage(
-                        "Turbo Whisper",
-                        f"Transcribed: {text[:50]}..."
-                        if len(text) > 50
-                        else f"Transcribed: {text}",
-                        QSystemTrayIcon.MessageIcon.Information,
-                        2000,
-                    )
-                else:
-                    # Timeout waiting for Claude - just show copied message
-                    self.tray.showMessage(
-                        "Turbo Whisper",
-                        "Copied (Claude busy)",
-                        QSystemTrayIcon.MessageIcon.Information,
-                        2000,
-                    )
-            else:
-                self.tray.showMessage(
-                    "Turbo Whisper",
-                    f"Transcribed: {text[:50]}..."
-                    if len(text) > 50
-                    else f"Transcribed: {text}",
-                    QSystemTrayIcon.MessageIcon.Information,
-                    2000,
+                    typed = self.typer.type_text(text)
+                elif self.config.claude_integration and self._is_claude_running():
+                    claude_busy = True
+
+            self._focus_target = None
+
+            if typed:
+                message = (
+                    f"Transcribed: {text[:50]}..." if len(text) > 50 else f"Transcribed: {text}"
                 )
+            elif claude_busy:
+                message = "Copied (Claude busy)"
+            else:
+                message = (
+                    f"Transcribed: {text[:50]}..." if len(text) > 50 else f"Transcribed: {text}"
+                )
+
+            self.tray.showMessage(
+                "Turbo Whisper",
+                message,
+                QSystemTrayIcon.MessageIcon.Information,
+                2000,
+            )
         else:
             # Transcription failed - delete saved audio if any
             if audio_filename:

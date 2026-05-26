@@ -231,7 +231,7 @@ self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 === Platform Notes
 
 * **Windows/Linux**: Both flags work as expected
-* **macOS**: `Tool` windows already don't steal focus; additional flags provide extra safety
+* **macOS**: Qt `WindowDoesNotAcceptFocus` helps, but showing the orb can still move keyboard focus in some apps. Turbo Whisper captures the frontmost application when recording starts and re-activates it before auto-pasting transcribed text (`focus.py`).
 
 == Platform-Specific Permissions
 

@@ -174,8 +174,8 @@ class Typer:
 
             import pyautogui
 
-            # Small delay to let focus settle
-            time.sleep(0.1)
+            # Let the previous app regain focus after our UI hides (macOS needs longer).
+            time.sleep(0.2 if self.system == "Darwin" else 0.1)
 
             # Clipboard paste handles Unicode text reliably, unlike key-by-key
             # typing which is limited by keyboard layout and input method.
