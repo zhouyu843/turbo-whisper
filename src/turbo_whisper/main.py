@@ -1431,10 +1431,12 @@ class TurboWhisper:
                 QSystemTrayIcon.MessageIcon.Warning,
                 2000,
             )
+            self._focus_target = None
 
     def _on_transcription_error(self, error: str) -> None:
         """Handle transcription error."""
         self.window.hide()
+        self._focus_target = None
         self.tray.showMessage(
             "Turbo Whisper - Error",
             error,

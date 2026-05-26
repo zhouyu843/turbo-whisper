@@ -50,22 +50,35 @@ def _capture_macos() -> FocusTarget | None:
 
 
 def _restore_macos(target: FocusTarget) -> bool:
-    if target.bundle_id:
-        try:
-            from AppKit import NSApplicationActivateIgnoringOtherApps, NSRunningApplication
+    try:
+        from AppKit import NSApplicationActivateIgnoringOtherApps, NSRunningApplication
 
+        if target.pid:
+            app = NSRunningApplication.runningApplicationWithProcessIdentifier_(
+                target.pid
+            )
+            if _activate_macos_app(app, NSApplicationActivateIgnoringOtherApps):
+                return True
+
+        if target.bundle_id:
             apps = NSRunningApplication.runningApplicationsWithBundleIdentifier_(
                 target.bundle_id
             )
-            if apps:
-                apps[0].activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
-                return True
-        except Exception as exc:
-            print(f"Focus restore failed: {exc}")
+            for app in apps:
+                if _activate_macos_app(app, NSApplicationActivateIgnoringOtherApps):
+                    return True
+    except Exception as exc:
+        print(f"Focus restore failed: {exc}")
 
     if target.app_name:
         return _restore_macos_applescript(target.app_name)
     return False
+
+
+def _activate_macos_app(app, activation_option: int) -> bool:
+    if app is None:
+        return False
+    return bool(app.activateWithOptions_(activation_option))
 
 
 def _capture_macos_applescript() -> FocusTarget | None:
@@ -105,4 +118,3 @@ def _restore_macos_applescript(app_name: str) -> bool:
     except (OSError, subprocess.TimeoutExpired):
         return False
     return result.returncode == 0
-
