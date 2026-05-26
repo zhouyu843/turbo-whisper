@@ -103,6 +103,8 @@ class RecordingWindow(QWidget):
 
     # Signal emitted when ESC is pressed to cancel
     cancel_requested = pyqtSignal()
+    # Emits previous docker_autostart value after settings are saved
+    settings_saved = pyqtSignal(bool)
 
     def __init__(self, config: Config):
         super().__init__()
@@ -394,6 +396,13 @@ class RecordingWindow(QWidget):
             "Start the configured Docker container on app launch"
         )
         settings_layout.addWidget(self.docker_autostart_check)
+
+        self.docker_autostop_check = QCheckBox("Stop Docker container when quitting")
+        self.docker_autostop_check.setChecked(self.config.docker_autostop)
+        self.docker_autostop_check.setToolTip(
+            "Stop the Whisper container on exit if Turbo Whisper started it this session"
+        )
+        settings_layout.addWidget(self.docker_autostop_check)
 
         docker_name_label = QLabel("Docker Container Name")
         self.docker_container_name_input = QLineEdit(self.config.docker_container_name)
@@ -783,15 +792,18 @@ class RecordingWindow(QWidget):
 
     def _save_settings(self) -> None:
         """Save settings to config."""
+        was_docker_autostart = self.config.docker_autostart
         self.config.api_url = self.api_url_input.text()
         self.config.api_key = self._actual_api_key  # Use the actual stored key
         self.config.docker_autostart = self.docker_autostart_check.isChecked()
+        self.config.docker_autostop = self.docker_autostop_check.isChecked()
         self.config.docker_container_name = self.docker_container_name_input.text()
         self.config.docker_run_command = self.docker_run_command_input.text()
         # Save selected microphone
         self.config.input_device_index = self.mic_combo.currentData()
         self.config.input_device_name = self.mic_combo.currentText()
         self.config.save()
+        self.settings_saved.emit(was_docker_autostart)
         # Brief confirmation
         self.save_btn.setText("✓ Saved!")
         QTimer.singleShot(1500, lambda: self.save_btn.setText("Save Settings"))
@@ -1039,6 +1051,7 @@ class TurboWhisper:
         self.signals.transcription_error.connect(self._on_transcription_error)
         self.signals.show_status.connect(self.window.set_status)
         self.signals.docker_message.connect(self._on_docker_message)
+        self.window.settings_saved.connect(self._on_settings_saved)
         self.window.cancel_requested.connect(self._cancel_recording)
 
         # Timer to poll waveform data from recorder thread (avoids cross-thread signal issues)
@@ -1439,9 +1452,16 @@ class TurboWhisper:
         self.recorder.cleanup()
         self.app.quit()
 
-    def _stop_docker_service(self) -> None:
+    def _on_settings_saved(self, was_docker_autostart: bool) -> None:
+        """React to settings changes that affect the Docker container."""
+        if was_docker_autostart and not self.config.docker_autostart:
+            self._stop_docker_service(on_settings_change=True)
+        elif not was_docker_autostart and self.config.docker_autostart:
+            self._start_docker_service_async()
+
+    def _stop_docker_service(self, *, on_settings_change: bool = False) -> None:
         """Stop Docker service if this app session started it."""
-        if self.docker_service.stop():
+        if self.docker_service.stop(on_settings_change=on_settings_change):
             self.tray.showMessage(
                 "Turbo Whisper",
                 "Stopped local Whisper Docker server",

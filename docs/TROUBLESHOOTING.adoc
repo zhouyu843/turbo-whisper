@@ -58,6 +58,9 @@
 |**Docker reports port 8000 is already in use**
 |Another process or container is already bound to port 8000. Stop it with `docker ps` / `docker stop <name>`, or change both the Docker `-p host:8000` mapping and Turbo Whisper `api_url` to a free port.
 
+|**Docker container keeps running after disabling autostart or quitting**
+|Turbo Whisper only stops containers it started in the current session. Enable **Stop Docker container when quitting** in settings (or set `docker_autostop` to `true` in `config.json`). Unchecking **Start local Docker Whisper server** and saving now stops a session-started container. Containers that were already running before Turbo Whisper launched are left alone.
+
 |**First local transcription is very slow**
 |faster-whisper-server may be downloading and loading the model for the first time. Use a persistent Hugging Face cache volume and allow a longer `docker_start_timeout_seconds` for first launch.
 

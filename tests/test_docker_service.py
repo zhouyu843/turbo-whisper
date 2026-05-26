@@ -239,3 +239,27 @@ def test_pre_existing_running_container_is_not_stopped_on_quit(monkeypatch):
     monkeypatch.setattr(subprocess, "run", fail_if_called)
 
     assert service.stop() is False
+
+
+def test_stop_on_settings_change_ignores_autostop_flag(monkeypatch):
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        return completed(args)
+
+    service = DockerService(docker_config(docker_autostop=False))
+    service.started_by_app = True
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    assert service.stop(on_settings_change=True) is True
+    assert calls == [["docker", "stop", "turbo-whisper-faster-whisper"]]
+
+
+def test_autostop_disabled_skips_normal_stop(monkeypatch):
+    service = DockerService(docker_config(docker_autostop=False))
+    service.started_by_app = True
+
+    monkeypatch.setattr(subprocess, "run", fail_if_called)
+
+    assert service.stop() is False

@@ -113,13 +113,16 @@ class DockerService:
             started_by_app=self.started_by_app,
         )
 
-    def stop(self) -> bool:
-        """Stop the container only if this app session started it."""
-        if (
-            not self.config.docker_autostop
-            or not self.started_by_app
-            or not self.config.docker_container_name.strip()
-        ):
+    def stop(self, *, on_settings_change: bool = False) -> bool:
+        """Stop the container only if this app session started it.
+
+        When ``on_settings_change`` is True, stop even if ``docker_autostop`` is
+        disabled (user turned off Docker autostart in settings).
+        """
+        if not self.started_by_app or not self.config.docker_container_name.strip():
+            return False
+
+        if not on_settings_change and not self.config.docker_autostop:
             return False
 
         try:
