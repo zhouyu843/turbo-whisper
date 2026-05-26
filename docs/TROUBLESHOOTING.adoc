@@ -70,6 +70,9 @@
 |**macOS: Hotkey not detected**
 |pynput requires Input Monitoring permissions on macOS. Go to System Preferences → Security & Privacy → Privacy → Input Monitoring and add your terminal or the app.
 
+|**macOS: Text not inserted into original app after dictation**
+|The recording orb can steal focus from the app you were typing in. Turbo Whisper saves the frontmost app when recording starts and re-activates it before pasting. Update to the latest version, restart the app, and ensure **Accessibility** is granted to your terminal or Turbo Whisper. If it still fails, set `show_window_on_recording` to `false` in `~/.config/turbo-whisper/config.json` (waveform hidden, focus stays put).
+
 |**Windows: Auto-type not working**
 |Ensure PyAutoGUI is installed. Some apps with elevated privileges may block simulated keyboard input. Try running Turbo Whisper as administrator.
 
