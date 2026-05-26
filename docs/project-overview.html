@@ -780,6 +780,40 @@
       </section>
     </div>
 
+    <div class="grid">
+      <section class="code-card">
+        <h3>把命令加入 Bash / Zsh / Fish</h3>
+        <p>如果是 AUR 或 PPA 安装，通常已经能直接运行。源码安装到 <code>.venv</code> 后，可以在仓库目录执行下面的命令。</p>
+        <pre><code># Bash
+source .venv/bin/activate
+echo "export PATH=\"$(pwd)/.venv/bin:\$PATH\"" &gt;&gt; ~/.bashrc
+source ~/.bashrc
+
+# Zsh
+source .venv/bin/activate
+echo "export PATH=\"$(pwd)/.venv/bin:\$PATH\"" &gt;&gt; ~/.zshrc
+source ~/.zshrc
+
+# Fish
+source .venv/bin/activate.fish
+fish_add_path (pwd)/.venv/bin</code></pre>
+      </section>
+
+      <section class="code-card">
+        <h3>PowerShell 里加入命令</h3>
+        <p>Windows 源码安装后，命令在 <code>.venv\Scripts</code>。改完用户 Path 后，重新打开终端再验证。</p>
+        <pre><code>.\.venv\Scripts\Activate.ps1
+
+[Environment]::SetEnvironmentVariable(
+  "Path",
+  [Environment]::GetEnvironmentVariable("Path", "User") + ";$PWD\.venv\Scripts",
+  "User"
+)
+
+Get-Command turbo-whisper</code></pre>
+      </section>
+    </div>
+
     <p class="footer-note">
       总结：Turbo Whisper 是一个“语音到文字再自动输入”的桌面工具。网页只是这份项目说明；
       真正的应用运行入口是 <code>turbo-whisper</code> 或 <code>python -m turbo_whisper.main</code>。

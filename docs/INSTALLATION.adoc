@@ -174,6 +174,72 @@ uv run turbo-whisper
 turbo-whisper
 ----
 
+== Add turbo-whisper to Your Shell
+
+Package manager installs usually add the command to your `PATH` automatically. If you installed from source into the repository `.venv`, run the matching commands from the repository directory.
+
+=== Bash
+
+[source,bash]
+----
+# Use for this terminal session
+source .venv/bin/activate
+
+# Or make turbo-whisper available without activating the venv
+echo "export PATH=\"$(pwd)/.venv/bin:\$PATH\"" >> ~/.bashrc
+source ~/.bashrc
+----
+
+=== Zsh
+
+[source,zsh]
+----
+# Use for this terminal session
+source .venv/bin/activate
+
+# Or make turbo-whisper available without activating the venv
+echo "export PATH=\"$(pwd)/.venv/bin:\$PATH\"" >> ~/.zshrc
+source ~/.zshrc
+----
+
+=== Fish
+
+[source,fish]
+----
+# Use for this terminal session
+source .venv/bin/activate.fish
+
+# Or make turbo-whisper available without activating the venv
+fish_add_path (pwd)/.venv/bin
+----
+
+=== PowerShell
+
+[source,powershell]
+----
+# Use for this terminal session
+.\.venv\Scripts\Activate.ps1
+
+# Or make turbo-whisper available without activating the venv
+[Environment]::SetEnvironmentVariable(
+  "Path",
+  [Environment]::GetEnvironmentVariable("Path", "User") + ";$PWD\.venv\Scripts",
+  "User"
+)
+----
+
+Open a new terminal and verify:
+
+[source,bash]
+----
+which turbo-whisper
+----
+
+[source,powershell]
+----
+Get-Command turbo-whisper
+----
+
 == Configuration
 
 On first run, Turbo Whisper creates a configuration file at:

@@ -185,6 +185,62 @@ pip install -e .
 pip install pyperclip  # Required for Windows clipboard/typing
 ```
 
+### Add the Command to Your Shell
+
+Package installs from AUR/PPA usually put `turbo-whisper` on your `PATH` automatically. If you installed from source into `.venv`, use one of these options from the repository directory.
+
+**Bash:**
+```bash
+# Use for this terminal session
+source .venv/bin/activate
+
+# Or make turbo-whisper available without activating the venv
+echo "export PATH=\"$(pwd)/.venv/bin:\$PATH\"" >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Zsh:**
+```zsh
+# Use for this terminal session
+source .venv/bin/activate
+
+# Or make turbo-whisper available without activating the venv
+echo "export PATH=\"$(pwd)/.venv/bin:\$PATH\"" >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Fish:**
+```fish
+# Use for this terminal session
+source .venv/bin/activate.fish
+
+# Or make turbo-whisper available without activating the venv
+fish_add_path (pwd)/.venv/bin
+```
+
+**PowerShell:**
+```powershell
+# Use for this terminal session
+.\.venv\Scripts\Activate.ps1
+
+# Or make turbo-whisper available without activating the venv
+[Environment]::SetEnvironmentVariable(
+  "Path",
+  [Environment]::GetEnvironmentVariable("Path", "User") + ";$PWD\.venv\Scripts",
+  "User"
+)
+```
+
+Open a new terminal and verify:
+
+```bash
+which turbo-whisper  # Linux/macOS
+```
+
+```powershell
+Get-Command turbo-whisper  # Windows PowerShell
+```
+
 ## Configuration
 
 Create `~/.config/turbo-whisper/config.json` (Linux/macOS) or `%APPDATA%\turbo-whisper\config.json` (Windows):
