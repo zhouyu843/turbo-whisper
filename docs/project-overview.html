@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Turbo Whisper 项目说明</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111318;
+      --panel: #191d25;
+      --panel-strong: #202633;
+      --text: #eef2f7;
+      --muted: #a7b0bf;
+      --line: #313948;
+      --lime: #84cc16;
+      --teal: #20c7a8;
+      --amber: #f4b942;
+      --rose: #ff6b7a;
+      --blue: #6aa9ff;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 12% 12%, rgba(132, 204, 22, 0.16), transparent 28rem),
+        radial-gradient(circle at 92% 4%, rgba(32, 199, 168, 0.12), transparent 24rem),
+        linear-gradient(135deg, #111318 0%, #171a22 48%, #101117 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 44px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 26px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #ecffcf;
+      box-shadow: 0 10px 24px rgba(132, 204, 22, 0.2);
+    }
+
+    .brand-mark img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.4vw, 2rem);
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 0.96rem;
+    }
+
+    .repo-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(25, 29, 37, 0.72);
+      white-space: nowrap;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(360px, 0.98fr);
+      gap: 22px;
+      align-items: stretch;
+      margin-bottom: 22px;
+    }
+
+    .intro,
+    .demo,
+    .section,
+    .code-card {
+      border: 1px solid var(--line);
+      background: rgba(25, 29, 37, 0.84);
+      box-shadow: var(--shadow);
+      border-radius: 8px;
+    }
+
+    .intro {
+      padding: clamp(22px, 4vw, 36px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 440px;
+    }
+
+    .eyebrow {
+      color: var(--lime);
+      font-weight: 720;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      margin: 0 0 13px;
+    }
+
+    .intro h2 {
+      margin: 0;
+      font-size: clamp(2.2rem, 6vw, 4.45rem);
+      line-height: 0.98;
+      letter-spacing: 0;
+      max-width: 760px;
+    }
+
+    .intro-copy {
+      margin: 24px 0 0;
+      color: #d4dae5;
+      font-size: clamp(1.02rem, 1.6vw, 1.2rem);
+      line-height: 1.72;
+      max-width: 720px;
+    }
+
+    .quick-facts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    .fact {
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      min-height: 96px;
+    }
+
+    .fact strong {
+      display: block;
+      color: var(--text);
+      font-size: 1.1rem;
+      margin-bottom: 5px;
+    }
+
+    .fact span {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.92rem;
+    }
+
+    .demo {
+      padding: 20px;
+      min-height: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow: hidden;
+    }
+
+    .demo-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .demo-title {
+      min-width: 0;
+    }
+
+    .demo-title h3,
+    .section h3,
+    .code-card h3 {
+      margin: 0;
+      font-size: 1.12rem;
+      letter-spacing: 0;
+    }
+
+    .demo-title p,
+    .section > p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .hotkey {
+      border: 1px solid rgba(132, 204, 22, 0.38);
+      color: #ecffd0;
+      background: rgba(132, 204, 22, 0.11);
+      border-radius: 8px;
+      padding: 9px 11px;
+      white-space: nowrap;
+      font-weight: 720;
+    }
+
+    .orb-zone {
+      position: relative;
+      min-height: 180px;
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
+        #131720;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+    }
+
+    .orb {
+      width: 124px;
+      height: 124px;
+      border-radius: 48% 52% 46% 54%;
+      background:
+        radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.9), transparent 16%),
+        radial-gradient(circle at 62% 68%, rgba(32, 199, 168, 0.85), transparent 34%),
+        linear-gradient(135deg, var(--lime), #4ade80 44%, var(--teal));
+      filter: drop-shadow(0 0 34px rgba(132, 204, 22, 0.35));
+      transform: scale(var(--orb-scale, 1));
+      transition: transform 220ms ease, border-radius 220ms ease, filter 220ms ease;
+    }
+
+    .orb.recording {
+      animation: breathe 1.5s ease-in-out infinite;
+      filter: drop-shadow(0 0 42px rgba(32, 199, 168, 0.42));
+    }
+
+    @keyframes breathe {
+      0%, 100% { border-radius: 48% 52% 46% 54%; }
+      50% { border-radius: 56% 44% 54% 46%; }
+    }
+
+    .wave-bars {
+      position: absolute;
+      bottom: 17px;
+      left: 18px;
+      right: 18px;
+      display: grid;
+      grid-template-columns: repeat(28, 1fr);
+      align-items: end;
+      gap: 4px;
+      height: 62px;
+    }
+
+    .wave-bars i {
+      display: block;
+      min-height: 8px;
+      height: var(--h, 12px);
+      border-radius: 5px;
+      background: linear-gradient(180deg, #e5ffba, var(--lime));
+      opacity: 0.45;
+      transition: height 160ms ease, opacity 160ms ease;
+    }
+
+    .wave-bars.active i {
+      opacity: 0.92;
+    }
+
+    .demo-output {
+      display: grid;
+      gap: 10px;
+    }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .status-pill {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 6px 9px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+
+    .transcript {
+      min-height: 92px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #0f131b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #dce7f5;
+      line-height: 1.55;
+    }
+
+    .demo-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: auto;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 13px;
+      color: #08100a;
+      background: var(--lime);
+      font-weight: 760;
+      cursor: pointer;
+    }
+
+    .btn.secondary {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 22px;
+      margin-bottom: 22px;
+    }
+
+    .section,
+    .code-card {
+      padding: 22px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .step {
+      position: relative;
+      min-height: 142px;
+      padding: 16px 14px;
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+    }
+
+    .step.active {
+      border-color: rgba(132, 204, 22, 0.72);
+      background: rgba(132, 204, 22, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .step b {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.09);
+      color: var(--lime);
+      margin-bottom: 14px;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 7px;
+    }
+
+    .step span {
+      color: var(--muted);
+      font-size: 0.91rem;
+      line-height: 1.48;
+    }
+
+    .modules {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 17px;
+    }
+
+    .module {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.045);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .module code {
+      display: inline-block;
+      color: #d8ff9d;
+      margin-bottom: 8px;
+      font-size: 0.92rem;
+    }
+
+    .module p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.92rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 17px 0 14px;
+    }
+
+    .tab {
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      background: rgba(255, 255, 255, 0.055);
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      color: #09110a;
+      background: var(--lime);
+      border-color: var(--lime);
+      font-weight: 760;
+    }
+
+    .tab-panel {
+      display: none;
+      min-height: 164px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #10141c;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      line-height: 1.58;
+      color: #d7dfec;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .tab-panel ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .tab-panel li + li {
+      margin-top: 8px;
+    }
+
+    pre {
+      margin: 16px 0 0;
+      padding: 15px;
+      border-radius: 8px;
+      background: #0e1219;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: auto;
+      color: #dce7f5;
+      line-height: 1.55;
+      font-size: 0.92rem;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 17px;
+    }
+
+    .legend-item {
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.91rem;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      margin-right: 7px;
+      background: var(--lime);
+    }
+
+    .dot.teal { background: var(--teal); }
+    .dot.amber { background: var(--amber); }
+    .dot.rose { background: var(--rose); }
+
+    .footer-note {
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.55;
+      margin-top: 22px;
+      font-size: 0.94rem;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .intro {
+        min-height: auto;
+      }
+
+      .flow {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .legend {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        width: min(100% - 22px, 1180px);
+        padding-top: 18px;
+      }
+
+      .topbar,
+      .demo-header,
+      .status-line {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .repo-chip,
+      .hotkey,
+      .status-pill {
+        white-space: normal;
+      }
+
+      .quick-facts,
+      .flow,
+      .modules,
+      .legend {
+        grid-template-columns: 1fr;
+      }
+
+      .intro,
+      .demo,
+      .section,
+      .code-card {
+        padding: 17px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <img src="../assets/logo.svg" alt="">
+        </div>
+        <div>
+          <h1>Turbo Whisper</h1>
+          <p>一个跨平台的语音输入与转写桌面应用</p>
+        </div>
+      </div>
+      <div class="repo-chip">Python · PyQt6 · Whisper API · Global Hotkey</div>
+    </header>
+
+    <section class="hero">
+      <article class="intro">
+        <div>
+          <p class="eyebrow">这个项目到底是什么</p>
+          <h2>把你说的话，变成当前窗口里的文字。</h2>
+          <p class="intro-copy">
+            Turbo Whisper 不是一个传统网页应用，而是一个类似 SuperWhisper 的桌面语音听写工具。
+            你在任何软件里按下全局热键，它会弹出一个悬浮录音窗口，录下麦克风声音，发给 OpenAI 兼容的 Whisper 转写接口，
+            再把识别出的文本自动输入到你原本正在使用的窗口里。
+          </p>
+        </div>
+        <div class="quick-facts">
+          <div class="fact">
+            <strong>输入方式</strong>
+            <span>按热键说话，不需要切换应用。</span>
+          </div>
+          <div class="fact">
+            <strong>识别核心</strong>
+            <span>调用 OpenAI Whisper 或自托管 faster-whisper-server。</span>
+          </div>
+          <div class="fact">
+            <strong>输出结果</strong>
+            <span>自动打字到当前窗口，同时可复制到剪贴板。</span>
+          </div>
+        </div>
+      </article>
+
+      <aside class="demo" aria-label="交互式流程演示">
+        <div class="demo-header">
+          <div class="demo-title">
+            <h3>模拟一次真实使用</h3>
+            <p>点下面的按钮，看这个项目从录音到输入的完整路径。</p>
+          </div>
+          <div class="hotkey">Alt + Space</div>
+        </div>
+
+        <div class="orb-zone">
+          <div class="orb" id="orb"></div>
+          <div class="wave-bars" id="waveBars" aria-hidden="true"></div>
+        </div>
+
+        <div class="demo-output">
+          <div class="status-line">
+            <span id="statusText">等待热键启动录音</span>
+            <span class="status-pill" id="statusPill">Idle</span>
+          </div>
+          <div class="transcript" id="transcript">
+            转写结果会出现在这里，然后被自动输入到你正在编辑的应用中。
+          </div>
+        </div>
+
+        <div class="demo-actions">
+          <button class="btn" id="runDemo" type="button">开始演示</button>
+          <button class="btn secondary" id="resetDemo" type="button">重置</button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="section">
+      <h3>核心流程</h3>
+      <p>下面这五步就是整个应用的主线，代码基本也围绕这条链路组织。</p>
+      <div class="flow" id="flowSteps">
+        <div class="step active">
+          <b>1</b>
+          <strong>监听热键</strong>
+          <span><code>hotkey.py</code> 用 pynput 或平台后端监听全局快捷键。</span>
+        </div>
+        <div class="step">
+          <b>2</b>
+          <strong>录制音频</strong>
+          <span><code>recorder.py</code> 通过 PyAudio 采集麦克风并计算音量。</span>
+        </div>
+        <div class="step">
+          <b>3</b>
+          <strong>显示悬浮窗</strong>
+          <span><code>waveform.py</code> 和 <code>main.py</code> 绘制声音响应动画。</span>
+        </div>
+        <div class="step">
+          <b>4</b>
+          <strong>调用 Whisper</strong>
+          <span><code>api.py</code> 把 WAV 音频发送到 OpenAI 兼容接口。</span>
+        </div>
+        <div class="step">
+          <b>5</b>
+          <strong>输入文字</strong>
+          <span><code>typer.py</code> 将识别文本粘贴或模拟键盘输入。</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="section">
+        <h3>代码模块怎么分工</h3>
+        <p>如果你之后要读代码，可以先从这些文件入手。</p>
+        <div class="modules">
+          <div class="module">
+            <code>main.py</code>
+            <p>应用入口，负责 Qt 应用、托盘菜单、悬浮窗口、设置面板和整体流程调度。</p>
+          </div>
+          <div class="module">
+            <code>config.py</code>
+            <p>读写配置文件，保存 API 地址、热键、语言、历史记录和录音文件设置。</p>
+          </div>
+          <div class="module">
+            <code>recorder.py</code>
+            <p>麦克风采集层，输出 WAV 字节，并把实时音量传给界面动画。</p>
+          </div>
+          <div class="module">
+            <code>api.py</code>
+            <p>Whisper 客户端，使用 httpx 上传音频并拿回转写文本。</p>
+          </div>
+          <div class="module">
+            <code>hotkey.py</code>
+            <p>全局快捷键层，处理 Linux、macOS、Windows 上的触发逻辑。</p>
+          </div>
+          <div class="module">
+            <code>typer.py</code>
+            <p>输出层，把转写结果输入到当前焦点窗口，失败时退回剪贴板。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>适合拿来做什么</h3>
+        <div class="tabs" role="tablist" aria-label="使用场景">
+          <button class="tab active" data-tab="coding" type="button">写代码</button>
+          <button class="tab" data-tab="accessibility" type="button">辅助输入</button>
+          <button class="tab" data-tab="transcribe" type="button">快速转写</button>
+        </div>
+        <div class="tab-panel active" id="coding">
+          <ul>
+            <li>对着 Claude Code、Aider、终端或编辑器直接说需求。</li>
+            <li>说完后文本会进入当前窗口，像你手动打出来一样。</li>
+            <li>仓库里还有 Claude Code integration，用本地 HTTP 信号等待 Claude 空闲后再输入。</li>
+          </ul>
+        </div>
+        <div class="tab-panel" id="accessibility">
+          <ul>
+            <li>减少长时间键盘输入，适合 RSI、腕管综合征或手部不适场景。</li>
+            <li>全局热键加系统托盘，让它像后台工具一样一直待命。</li>
+            <li>历史记录会保存最近转写内容，方便再次复制或复用。</li>
+          </ul>
+        </div>
+        <div class="tab-panel" id="transcribe">
+          <ul>
+            <li>Whisper 支持多语言识别，配置里可设置语言。</li>
+            <li>可以使用 OpenAI 官方接口，也可以接自托管 faster-whisper-server。</li>
+            <li>录音文件可跟随历史记录保存，便于回听和排查。</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section class="code-card">
+        <h3>最关键的配置长这样</h3>
+        <pre><code>{
+  "api_url": "https://api.openai.com/v1/audio/transcriptions",
+  "api_key": "sk-your-api-key",
+  "hotkey": ["alt", "space"],
+  "language": "en",
+  "auto_paste": true,
+  "copy_to_clipboard": true,
+  "waveform_color": "#84cc16"
+}</code></pre>
+      </section>
+
+      <section class="section">
+        <h3>技术栈一眼看懂</h3>
+        <p>这个项目的复杂度主要来自“跨平台桌面能力”，不是来自业务逻辑。</p>
+        <div class="legend">
+          <div class="legend-item"><span class="dot"></span>PyQt6：窗口、托盘、设置面板</div>
+          <div class="legend-item"><span class="dot teal"></span>PyAudio：麦克风录音</div>
+          <div class="legend-item"><span class="dot amber"></span>httpx：调用转写 API</div>
+          <div class="legend-item"><span class="dot rose"></span>pynput / evdev / pyautogui：热键与输入</div>
+        </div>
+      </section>
+    </div>
+
+    <p class="footer-note">
+      总结：Turbo Whisper 是一个“语音到文字再自动输入”的桌面工具。网页只是这份项目说明；
+      真正的应用运行入口是 <code>turbo-whisper</code> 或 <code>python -m turbo_whisper.main</code>。
+    </p>
+  </main>
+
+  <script>
+    const bars = document.querySelector("#waveBars");
+    const orb = document.querySelector("#orb");
+    const runDemo = document.querySelector("#runDemo");
+    const resetDemo = document.querySelector("#resetDemo");
+    const statusText = document.querySelector("#statusText");
+    const statusPill = document.querySelector("#statusPill");
+    const transcript = document.querySelector("#transcript");
+    const steps = Array.from(document.querySelectorAll(".step"));
+    const tabs = Array.from(document.querySelectorAll(".tab"));
+    const panels = Array.from(document.querySelectorAll(".tab-panel"));
+
+    let demoTimers = [];
+    let waveTimer = null;
+
+    function buildBars() {
+      bars.innerHTML = "";
+      for (let i = 0; i < 28; i += 1) {
+        const bar = document.createElement("i");
+        bar.style.setProperty("--h", `${10 + Math.random() * 18}px`);
+        bars.appendChild(bar);
+      }
+    }
+
+    function setStep(index) {
+      steps.forEach((step, stepIndex) => {
+        step.classList.toggle("active", stepIndex === index);
+      });
+    }
+
+    function animateWave(active) {
+      bars.classList.toggle("active", active);
+      orb.classList.toggle("recording", active);
+      window.clearInterval(waveTimer);
+      if (!active) {
+        orb.style.setProperty("--orb-scale", "1");
+        Array.from(bars.children).forEach((bar) => {
+          bar.style.setProperty("--h", `${10 + Math.random() * 18}px`);
+        });
+        return;
+      }
+      waveTimer = window.setInterval(() => {
+        const intensity = 0.55 + Math.random() * 0.75;
+        orb.style.setProperty("--orb-scale", String(0.96 + intensity * 0.12));
+        Array.from(bars.children).forEach((bar, index) => {
+          const rhythm = Math.sin(Date.now() / 170 + index * 0.55) * 18;
+          const random = Math.random() * 30;
+          bar.style.setProperty("--h", `${14 + Math.max(0, rhythm) + random}px`);
+        });
+      }, 150);
+    }
+
+    function reset() {
+      demoTimers.forEach((timer) => window.clearTimeout(timer));
+      demoTimers = [];
+      window.clearInterval(waveTimer);
+      setStep(0);
+      animateWave(false);
+      statusText.textContent = "等待热键启动录音";
+      statusPill.textContent = "Idle";
+      transcript.textContent = "转写结果会出现在这里，然后被自动输入到你正在编辑的应用中。";
+      runDemo.disabled = false;
+      runDemo.textContent = "开始演示";
+    }
+
+    function schedule(delay, callback) {
+      const timer = window.setTimeout(callback, delay);
+      demoTimers.push(timer);
+    }
+
+    function playDemo() {
+      reset();
+      runDemo.disabled = true;
+      runDemo.textContent = "演示中";
+
+      statusText.textContent = "全局热键触发，悬浮录音窗出现";
+      statusPill.textContent = "Hotkey";
+      setStep(0);
+
+      schedule(900, () => {
+        statusText.textContent = "正在录制麦克风声音，并驱动波形动画";
+        statusPill.textContent = "Recording";
+        transcript.textContent = "你可以把这里想象成：我想让 Claude 帮我解释这个仓库。";
+        setStep(1);
+        animateWave(true);
+      });
+
+      schedule(2600, () => {
+        statusText.textContent = "录音结束，界面显示声音响应的状态";
+        statusPill.textContent = "Waveform";
+        setStep(2);
+      });
+
+      schedule(3900, () => {
+        statusText.textContent = "音频被封装成 WAV，发送给 Whisper API";
+        statusPill.textContent = "API";
+        setStep(3);
+        animateWave(false);
+      });
+
+      schedule(5300, () => {
+        statusText.textContent = "识别完成，文本会输入到当前焦点窗口";
+        statusPill.textContent = "Typed";
+        transcript.textContent = "帮我解释一下这个仓库：它是一个跨平台语音听写工具，按热键录音，调用 Whisper 转写，然后自动输入文本。";
+        setStep(4);
+      });
+
+      schedule(6900, () => {
+        runDemo.disabled = false;
+        runDemo.textContent = "再演示一次";
+      });
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const target = tab.dataset.tab;
+        tabs.forEach((item) => item.classList.toggle("active", item === tab));
+        panels.forEach((panel) => panel.classList.toggle("active", panel.id === target));
+      });
+    });
+
+    runDemo.addEventListener("click", playDemo);
+    resetDemo.addEventListener("click", reset);
+
+    buildBars();
+  </script>
+</body>
+</html>

@@ -149,11 +149,15 @@ Keep the `/docs/` directory up to date:
 - **docs/SOLUTION_DESIGN.adoc** - Technical design decisions, cross-platform compatibility tables
 - **docs/TROUBLESHOOTING.adoc** - Problem/solution table for common issues
 - **docs/PACKAGE.adoc** - AUR and PPA packaging guide
+- **docs/product-design-board.html** - Current product/UI design snapshot for settings, workflows, menus, and module responsibilities
+- **docs/project-overview.html** - High-level interactive overview for understanding what the project does
 
 When fixing bugs or adding features:
 1. Update TROUBLESHOOTING.adoc if the fix resolves a common user problem
 2. Update SOLUTION_DESIGN.adoc if the change affects cross-platform behavior
 3. Add new platform-specific workarounds to the compatibility tables
+4. Update product-design-board.html when behavior, settings, UI structure, tray actions, workflows, or module responsibilities change, so the page stays aligned with the real app
+5. Update project-overview.html when the high-level product story or core workflow changes
 
 ## Packaging (AUR & PPA)
 

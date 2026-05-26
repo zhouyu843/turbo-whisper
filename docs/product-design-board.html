@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Turbo Whisper 当前设计说明</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101217;
+      --panel: #181d25;
+      --panel-2: #202633;
+      --line: #303847;
+      --text: #eef3f8;
+      --muted: #aab4c3;
+      --quiet: #788394;
+      --lime: #84cc16;
+      --mint: #20c7a8;
+      --amber: #f4b942;
+      --rose: #ff6b7a;
+      --shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(132, 204, 22, 0.15), transparent 26rem),
+        radial-gradient(circle at 92% 10%, rgba(32, 199, 168, 0.1), transparent 24rem),
+        linear-gradient(135deg, #101217, #151922 48%, #101217);
+      color: var(--text);
+    }
+
+    code {
+      color: #d9ffa1;
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 42px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #ecffcf;
+      box-shadow: 0 10px 24px rgba(132, 204, 22, 0.2);
+      flex: 0 0 auto;
+    }
+
+    .brand-mark img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    .brand h1 {
+      margin-bottom: 2px;
+      font-size: clamp(1.35rem, 2.4vw, 2rem);
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin-bottom: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 11px;
+      color: var(--muted);
+      background: rgba(24, 29, 37, 0.76);
+      white-space: nowrap;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(340px, 0.74fr);
+      gap: 22px;
+      margin-bottom: 22px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(24, 29, 37, 0.86);
+      box-shadow: var(--shadow);
+    }
+
+    .intro {
+      padding: clamp(22px, 4vw, 34px);
+      min-height: 330px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .eyebrow {
+      color: var(--lime);
+      font-weight: 760;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    .intro h2 {
+      margin-bottom: 22px;
+      font-size: clamp(2.1rem, 5.2vw, 4rem);
+      line-height: 1;
+      letter-spacing: 0;
+      max-width: 760px;
+    }
+
+    .intro p {
+      color: #d6deeb;
+      line-height: 1.72;
+      font-size: clamp(1.02rem, 1.5vw, 1.16rem);
+      max-width: 780px;
+      margin-bottom: 0;
+    }
+
+    .summary {
+      padding: 20px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .summary h3,
+    .section h3 {
+      margin-bottom: 6px;
+      font-size: 1.12rem;
+      letter-spacing: 0;
+    }
+
+    .summary p,
+    .section > p {
+      color: var(--muted);
+      line-height: 1.58;
+      margin-bottom: 0;
+    }
+
+    .fact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .fact {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.045);
+      padding: 12px;
+      min-height: 82px;
+    }
+
+    .fact strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .fact span {
+      color: var(--muted);
+      line-height: 1.42;
+      font-size: 0.92rem;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(360px, 0.86fr) minmax(0, 1.14fr);
+      gap: 22px;
+      align-items: start;
+      margin-bottom: 22px;
+    }
+
+    .mock-window {
+      border: 1px solid rgba(74, 48, 112, 0.9);
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(45, 27, 78, 0.94), rgba(26, 16, 51, 0.96) 50%, rgba(15, 10, 26, 0.98));
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .mock-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--quiet);
+      font-size: 0.82rem;
+      margin-bottom: 12px;
+    }
+
+    .close {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--quiet);
+    }
+
+    .orb-area {
+      height: 154px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+    }
+
+    .orb {
+      width: 96px;
+      height: 96px;
+      border-radius: 47% 53% 51% 49%;
+      background:
+        radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.88), transparent 16%),
+        linear-gradient(135deg, #84cc16, #20c7a8);
+      filter: drop-shadow(0 0 32px rgba(132, 204, 22, 0.35));
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.96); border-radius: 47% 53% 51% 49%; }
+      50% { transform: scale(1.06); border-radius: 55% 45% 44% 56%; }
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 10px 2px 12px;
+      color: var(--quiet);
+      font-size: 0.82rem;
+    }
+
+    .chevron {
+      width: 40px;
+      height: 28px;
+      margin: 0 auto 12px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: var(--lime);
+      background: rgba(132, 204, 22, 0.11);
+      border: 1px solid rgba(132, 204, 22, 0.3);
+    }
+
+    .settings-box {
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.32);
+      padding: 12px;
+      display: grid;
+      gap: 9px;
+    }
+
+    .field label {
+      display: block;
+      color: #8d96a5;
+      font-size: 0.76rem;
+      margin-bottom: 5px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .field-row.two-icons {
+      grid-template-columns: minmax(0, 1fr) auto auto;
+    }
+
+    .input,
+    .select {
+      min-height: 31px;
+      border-radius: 4px;
+      border: 1px solid #4a3070;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      padding: 7px 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.82rem;
+    }
+
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      display: grid;
+      place-items: center;
+      color: #9aa4b3;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .gain-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #8d96a5;
+      font-size: 0.82rem;
+    }
+
+    .gain-row b {
+      color: var(--lime);
+    }
+
+    .slider {
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--lime) 50%, #333 50%);
+      margin: 8px 0 3px;
+      position: relative;
+    }
+
+    .slider::after {
+      content: "";
+      position: absolute;
+      top: -4px;
+      left: calc(50% - 7px);
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--lime);
+    }
+
+    .ticks {
+      display: grid;
+      grid-template-columns: repeat(11, 1fr);
+      height: 8px;
+      padding: 0 7px;
+    }
+
+    .ticks i {
+      width: 1px;
+      height: 5px;
+      background: #666;
+      justify-self: center;
+    }
+
+    .history {
+      border-radius: 4px;
+      border: 1px solid #4a3070;
+      background: rgba(255, 255, 255, 0.05);
+      min-height: 118px;
+      padding: 6px;
+      display: grid;
+      gap: 5px;
+    }
+
+    .clip {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 31px;
+      padding: 5px 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cbd3df;
+      font-size: 0.78rem;
+    }
+
+    .save-settings {
+      min-height: 34px;
+      border-radius: 4px;
+      display: grid;
+      place-items: center;
+      color: #050805;
+      background: var(--lime);
+      font-weight: 760;
+      font-size: 0.82rem;
+    }
+
+    .section {
+      padding: 22px;
+    }
+
+    .operation-list,
+    .settings-list,
+    .file-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 11px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .num,
+    .dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #071008;
+      background: var(--lime);
+      font-weight: 800;
+      font-size: 0.84rem;
+    }
+
+    .dot {
+      background: var(--mint);
+    }
+
+    .dot.amber {
+      background: var(--amber);
+    }
+
+    .dot.rose {
+      background: var(--rose);
+      color: #fff;
+    }
+
+    .row strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .row span {
+      display: block;
+      color: var(--muted);
+      line-height: 1.48;
+      font-size: 0.93rem;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+      margin-bottom: 22px;
+    }
+
+    .table {
+      margin-top: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .table-row {
+      display: grid;
+      grid-template-columns: 0.85fr 1.15fr;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .table-row:last-child {
+      border-bottom: 0;
+    }
+
+    .table-row b {
+      color: var(--text);
+    }
+
+    .table-row span {
+      color: var(--muted);
+      line-height: 1.46;
+    }
+
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.94rem;
+    }
+
+    @media (max-width: 940px) {
+      .hero,
+      .main-grid,
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        width: min(100% - 22px, 1120px);
+        padding-top: 18px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .chip {
+        white-space: normal;
+      }
+
+      .fact-grid,
+      .table-row {
+        grid-template-columns: 1fr;
+      }
+
+      .intro,
+      .section {
+        padding: 17px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <img src="../assets/logo.svg" alt="">
+        </div>
+        <div>
+          <h1>Turbo Whisper 当前设计说明</h1>
+          <p>只记录现在的软件是什么样，不讨论未来目标。</p>
+        </div>
+      </div>
+      <div class="chip">Current design snapshot · v1.0.x</div>
+    </header>
+
+    <section class="hero">
+      <article class="panel intro">
+        <div>
+          <p class="eyebrow">一句话理解</p>
+          <h2>这是一个常驻后台的语音输入工具。</h2>
+          <p>
+            当前 Turbo Whisper 的核心体验是：用户在任何应用里按全局热键，说话，应用录音并调用 Whisper API，
+            然后把转写出来的文字复制到剪贴板，并可自动输入到原本聚焦的窗口。
+          </p>
+        </div>
+      </article>
+
+      <aside class="panel summary">
+        <h3>现在包含哪些部分</h3>
+        <p>这个仓库当前主要由一个 PyQt6 桌面应用、录音模块、Whisper API 客户端、热键监听和自动输入模块组成。</p>
+        <div class="fact-grid">
+          <div class="fact"><strong>运行形态</strong><span>悬浮窗 + 系统托盘，常驻后台。</span></div>
+          <div class="fact"><strong>触发方式</strong><span>全局热键开始或停止录音。</span></div>
+          <div class="fact"><strong>识别方式</strong><span>调用 OpenAI 兼容 Whisper 接口。</span></div>
+          <div class="fact"><strong>输出方式</strong><span>剪贴板和自动输入当前窗口。</span></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="main-grid">
+      <article class="mock-window" aria-label="当前悬浮窗口模拟">
+        <div class="mock-title">
+          <span>v1.0.0 · 当前悬浮窗模拟</span>
+          <span class="close">×</span>
+        </div>
+        <div class="orb-area">
+          <div class="orb" aria-hidden="true"></div>
+        </div>
+        <div class="status-row">
+          <span>Listening...</span>
+          <span>Stop: Alt+Space</span>
+        </div>
+        <div class="chevron">⌃</div>
+        <div class="settings-box">
+          <div class="field">
+            <label>API URL</label>
+            <div class="field-row">
+              <div class="input">https://whisper.weeksfamily.me/v1/audio/transcriptions</div>
+              <div class="icon-btn">⧉</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>API Key</label>
+            <div class="field-row two-icons">
+              <div class="input">••••••••••••••••</div>
+              <div class="icon-btn">◉</div>
+              <div class="icon-btn">⧉</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Microphone</label>
+            <div class="select">System default input device</div>
+          </div>
+          <div class="field">
+            <div class="gain-row"><span>Mic Gain:</span><b>100%</b></div>
+            <div class="slider"></div>
+            <div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="field">
+            <label>Recent Clips</label>
+            <div class="history">
+              <div class="clip"><span>帮我总结这个错误日志...</span><span>⧉</span></div>
+              <div class="clip"><span>给这个函数补一个测试...</span><span>⧉</span></div>
+              <div class="clip"><span>解释一下这个仓库结构...</span><span>⧉</span></div>
+            </div>
+          </div>
+          <div class="gain-row"><span>Claude Code</span><b>Ready</b></div>
+          <div class="save-settings">Save Settings</div>
+        </div>
+      </article>
+
+      <article class="panel section">
+        <h3>主要操作流程</h3>
+        <p>现在的设计围绕一条很短的链路展开。</p>
+        <div class="operation-list">
+          <div class="row">
+            <div class="num">1</div>
+            <div><strong>启动应用</strong><span>应用创建 Qt 窗口和系统托盘，并启动全局热键监听。配置来自用户配置文件。</span></div>
+          </div>
+          <div class="row">
+            <div class="num">2</div>
+            <div><strong>按热键录音</strong><span>热键触发后，悬浮窗口显示，PyAudio 开始从麦克风读取声音。</span></div>
+          </div>
+          <div class="row">
+            <div class="num">3</div>
+            <div><strong>停止并转写</strong><span>再次触发或结束录音后，音频被封装成 WAV，发送到 Whisper API。</span></div>
+          </div>
+          <div class="row">
+            <div class="num">4</div>
+            <div><strong>输出文本</strong><span>转写结果进入历史记录；按配置复制到剪贴板，并自动输入到当前窗口。</span></div>
+          </div>
+          <div class="row">
+            <div class="num">5</div>
+            <div><strong>处理 Claude Code</strong><span>如果启用 Claude 集成，应用会等待本地 ready 信号，避免在 Claude 忙时直接输入。</span></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="two-col">
+      <article class="panel section">
+        <h3>当前设置项</h3>
+        <p>这些是现在代码里已经存在或配置文件里支持的设置。</p>
+        <div class="settings-list">
+          <div class="row"><div class="dot"></div><div><strong>API</strong><span><code>api_url</code> 和 <code>api_key</code>，支持 OpenAI 或自托管 faster-whisper-server。</span></div></div>
+          <div class="row"><div class="dot"></div><div><strong>热键</strong><span><code>hotkey</code>，非 Windows 默认 <code>Alt+Space</code>，Windows 默认 <code>F8</code>。</span></div></div>
+          <div class="row"><div class="dot"></div><div><strong>音频</strong><span>采样率、声道、chunk size、输入设备、麦克风增益。</span></div></div>
+          <div class="row"><div class="dot amber"></div><div><strong>界面</strong><span>窗口宽高、背景颜色、波形颜色、录音时是否显示窗口。</span></div></div>
+          <div class="row"><div class="dot amber"></div><div><strong>行为</strong><span>是否自动输入、是否复制到剪贴板、语言、打字延迟。</span></div></div>
+          <div class="row"><div class="dot rose"></div><div><strong>历史和集成</strong><span>最近 20 条转写、录音保存、Claude 集成端口和等待超时。</span></div></div>
+        </div>
+      </article>
+
+      <article class="panel section">
+        <h3>当前入口和菜单</h3>
+        <p>用户主要通过悬浮窗和托盘菜单控制应用。</p>
+        <div class="table">
+          <div class="table-row"><b>系统托盘</b><span>显示应用状态和热键提示，提供后台常驻入口。</span></div>
+          <div class="table-row"><b>Show Window</b><span>手动显示悬浮窗口。</span></div>
+          <div class="table-row"><b>Start Recording</b><span>从托盘菜单开始或停止录音。</span></div>
+          <div class="table-row"><b>Settings...</b><span>打开窗口并展开设置面板。</span></div>
+          <div class="table-row"><b>Quit</b><span>停止热键、录音资源和集成服务，然后退出。</span></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel section">
+      <h3>代码文件对应关系</h3>
+      <p>如果只是想理解现在的设计，先看这些文件就够了。</p>
+      <div class="file-list">
+        <div class="row"><div class="dot"></div><div><strong><code>main.py</code></strong><span>应用入口、悬浮窗口、设置面板、托盘菜单、录音到转写的主流程。</span></div></div>
+        <div class="row"><div class="dot"></div><div><strong><code>config.py</code></strong><span>配置默认值、配置文件路径、历史记录和录音文件保存。</span></div></div>
+        <div class="row"><div class="dot"></div><div><strong><code>recorder.py</code></strong><span>麦克风设备、PyAudio 录音、声音级别和 WAV 输出。</span></div></div>
+        <div class="row"><div class="dot amber"></div><div><strong><code>api.py</code></strong><span>把音频上传到 Whisper API，并把返回 JSON 里的 text 取出来。</span></div></div>
+        <div class="row"><div class="dot amber"></div><div><strong><code>hotkey.py</code></strong><span>跨平台全局热键监听。</span></div></div>
+        <div class="row"><div class="dot rose"></div><div><strong><code>typer.py</code> / <code>integration_server.py</code></strong><span>自动输入、剪贴板，以及 Claude Code ready/busy 本地 HTTP 信号。</span></div></div>
+      </div>
+    </section>
+
+    <p class="footer">
+      这个页面只描述当前设计。未来如果要设计目标状态，建议另开一个更轻量的草稿，而不要把目标编辑器塞进这里。
+    </p>
+  </main>
+</body>
+</html>
