@@ -46,6 +46,21 @@
 |**Transcription API errors**
 |Verify API URL and key in settings. For self-hosted whisper, ensure the server is running. Check network connectivity.
 
+|**Docker autostart says Docker CLI is not available**
+|Install Docker Desktop or the Docker CLI package for your platform. Confirm `docker --version` works in the same environment used to launch Turbo Whisper.
+
+|**Docker autostart fails because the daemon is not running**
+|Start Docker Desktop or the Docker daemon, then relaunch Turbo Whisper. On Linux, check `systemctl status docker` or your rootless Docker service.
+
+|**Docker container starts but API never becomes ready**
+|Check that the configured `api_url` host and port match the Docker port mapping, for example `http://localhost:8000/v1/audio/transcriptions` with `-p 8000:8000`. The first model download can also exceed the default timeout; increase `docker_start_timeout_seconds` and watch `docker logs turbo-whisper-faster-whisper`.
+
+|**Docker reports port 8000 is already in use**
+|Another process or container is already bound to port 8000. Stop it with `docker ps` / `docker stop <name>`, or change both the Docker `-p host:8000` mapping and Turbo Whisper `api_url` to a free port.
+
+|**First local transcription is very slow**
+|faster-whisper-server may be downloading and loading the model for the first time. Use a persistent Hugging Face cache volume and allow a longer `docker_start_timeout_seconds` for first launch.
+
 |**Slow recording start**
 |First recording may be slow due to model loading on the API side. Subsequent recordings should be faster. Consider using a local whisper server for lower latency.
 

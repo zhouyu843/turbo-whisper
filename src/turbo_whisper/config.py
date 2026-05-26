@@ -66,6 +66,13 @@ class Config:
     claude_integration_port: int = 7878  # Port for integration HTTP server
     claude_wait_timeout: float = 30.0  # Max seconds to wait for Claude ready signal
 
+    # Optional local Docker model manager
+    docker_autostart: bool = False
+    docker_autostop: bool = True
+    docker_container_name: str = "turbo-whisper-faster-whisper"
+    docker_run_command: str = ""
+    docker_start_timeout_seconds: float = 30.0
+
     # History (recent transcriptions)
     history: list[HistoryEntry] = field(default_factory=list)
     history_max: int = 20

@@ -309,20 +309,27 @@ You can run your own Whisper server for faster, private, and cost-free transcrip
 
 ```bash
 # With NVIDIA GPU (recommended)
-docker run --gpus=all -p 8000:8000 \
+docker run -d --name turbo-whisper-faster-whisper --gpus=all -p 8000:8000 \
   -e WHISPER__MODEL=Systran/faster-whisper-large-v3 \
   fedirz/faster-whisper-server:latest-cuda
 
 # With smaller model (less VRAM)
-docker run --gpus=all -p 8000:8000 \
+docker run -d --name turbo-whisper-faster-whisper --gpus=all -p 8000:8000 \
   -e WHISPER__MODEL=Systran/faster-whisper-small \
   fedirz/faster-whisper-server:latest-cuda
 
 # CPU only (slower, no GPU required)
-docker run -p 8000:8000 \
+docker run -d --name turbo-whisper-faster-whisper -p 8000:8000 \
   -e WHISPER__MODEL=Systran/faster-whisper-base \
   fedirz/faster-whisper-server:latest-cpu
 ```
+
+Turbo Whisper can optionally manage this container for you. In Settings, enable
+"Start local Docker Whisper server", set the container name to
+`turbo-whisper-faster-whisper`, and paste the matching `docker run -d --name ...`
+command. On launch, Turbo Whisper starts the named container or reuses it if it is
+already running. On quit from the tray, it stops only containers started by the
+current Turbo Whisper session.
 
 ### Available Models
 
@@ -341,7 +348,7 @@ Models are downloaded automatically on first use:
 To avoid re-downloading models on container restart:
 
 ```bash
-docker run --gpus=all -p 8000:8000 \
+docker run -d --name turbo-whisper-faster-whisper --gpus=all -p 8000:8000 \
   -v ~/.cache/huggingface:/root/.cache/huggingface \
   -e WHISPER__MODEL=Systran/faster-whisper-large-v3 \
   fedirz/faster-whisper-server:latest-cuda
@@ -354,7 +361,11 @@ Update your config to use the self-hosted server:
 ```json
 {
   "api_url": "http://localhost:8000/v1/audio/transcriptions",
-  "api_key": ""
+  "api_key": "",
+  "docker_autostart": true,
+  "docker_autostop": true,
+  "docker_container_name": "turbo-whisper-faster-whisper",
+  "docker_run_command": "docker run -d --name turbo-whisper-faster-whisper -p 8000:8000 -e WHISPER__MODEL=Systran/faster-whisper-base fedirz/faster-whisper-server:latest-cpu"
 }
 ```
 

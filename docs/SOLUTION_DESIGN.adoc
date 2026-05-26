@@ -258,3 +258,17 @@ The application uses file locking (`fcntl.flock`) to ensure only one instance ru
 
 * Linux: `$XDG_RUNTIME_DIR/turbo-whisper.lock`
 * Fallback: `/tmp/turbo-whisper.lock`
+
+== Optional Docker Whisper Lifecycle
+
+Turbo Whisper can optionally start a local self-hosted Whisper container during application startup. This is disabled by default and controlled by `docker_autostart`, `docker_container_name`, `docker_run_command`, `docker_autostop`, and `docker_start_timeout_seconds`.
+
+The implementation uses the Docker CLI without shell execution:
+
+* `docker --version` checks whether the CLI is available.
+* `docker inspect -f {{.State.Running}} <name>` detects whether the named container is already running or stopped.
+* `docker start <name>` is preferred when a stopped named container already exists.
+* The configured `docker run` command is parsed with `shlex.split` and must begin with `docker run`.
+* The configured API URL host and port are polled until reachable or the timeout expires.
+
+Turbo Whisper tracks whether it started the container in the current app session. On tray Quit or application exit, `docker stop <name>` runs only when `docker_autostop` is enabled and this session started the container. Closing the floating window only hides the UI and does not stop Docker.

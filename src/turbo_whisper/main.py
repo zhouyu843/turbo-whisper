@@ -17,6 +17,7 @@ from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QHBoxLayout,
     QLabel,
@@ -33,6 +34,7 @@ from PyQt6.QtWidgets import (
 
 from .api import WhisperAPIError, WhisperClient
 from .config import Config
+from .docker_service import DockerService
 from .hotkey import create_hotkey_manager
 from .icons import (
     get_check_icon,
@@ -59,6 +61,7 @@ class SignalBridge(QObject):
     transcription_complete = pyqtSignal(str)
     transcription_error = pyqtSignal(str)
     show_status = pyqtSignal(str)
+    docker_message = pyqtSignal(str, str)
 
 
 class TickMarksWidget(QWidget):
@@ -260,6 +263,25 @@ class RecordingWindow(QWidget):
                 margin: -4px 0;
                 border-radius: 7px;
             }
+            QCheckBox {
+                color: #ccc;
+                font-size: 11px;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 14px;
+                height: 14px;
+            }
+            QCheckBox::indicator:unchecked {
+                border: 1px solid #4a3070;
+                background-color: rgba(255, 255, 255, 0.1);
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked {
+                border: 1px solid #84cc16;
+                background-color: #84cc16;
+                border-radius: 3px;
+            }
         """
         )
         settings_layout = QVBoxLayout(self.settings_panel)
@@ -364,6 +386,28 @@ class RecordingWindow(QWidget):
         key_row.addWidget(self.key_copy_btn)
         settings_layout.addWidget(key_label)
         settings_layout.addLayout(key_row)
+
+        # Docker local server management
+        self.docker_autostart_check = QCheckBox("Start local Docker Whisper server")
+        self.docker_autostart_check.setChecked(self.config.docker_autostart)
+        self.docker_autostart_check.setToolTip(
+            "Start the configured Docker container on app launch"
+        )
+        settings_layout.addWidget(self.docker_autostart_check)
+
+        docker_name_label = QLabel("Docker Container Name")
+        self.docker_container_name_input = QLineEdit(self.config.docker_container_name)
+        self.docker_container_name_input.setPlaceholderText("turbo-whisper-faster-whisper")
+        settings_layout.addWidget(docker_name_label)
+        settings_layout.addWidget(self.docker_container_name_input)
+
+        docker_command_label = QLabel("Docker Run Command")
+        self.docker_run_command_input = QLineEdit(self.config.docker_run_command)
+        self.docker_run_command_input.setPlaceholderText(
+            "docker run -d --name turbo-whisper-faster-whisper -p 8000:8000 ..."
+        )
+        settings_layout.addWidget(docker_command_label)
+        settings_layout.addWidget(self.docker_run_command_input)
 
         # Microphone selection
         mic_label = QLabel("Microphone")
@@ -588,7 +632,7 @@ class RecordingWindow(QWidget):
             self.settings_panel.show()
             self.settings_btn.setIcon(get_chevron_up_icon(20, "#84cc16"))
             # Expand window - make it tall enough for all settings + taller history
-            self.setFixedSize(self.config.window_width, self.config.window_height + 520)
+            self.setFixedSize(self.config.window_width, self.config.window_height + 640)
             # Refresh Claude status and start auto-update timer
             self._update_claude_status()
             self._claude_status_timer.start()
@@ -741,6 +785,9 @@ class RecordingWindow(QWidget):
         """Save settings to config."""
         self.config.api_url = self.api_url_input.text()
         self.config.api_key = self._actual_api_key  # Use the actual stored key
+        self.config.docker_autostart = self.docker_autostart_check.isChecked()
+        self.config.docker_container_name = self.docker_container_name_input.text()
+        self.config.docker_run_command = self.docker_run_command_input.text()
         # Save selected microphone
         self.config.input_device_index = self.mic_combo.currentData()
         self.config.input_device_name = self.mic_combo.currentText()
@@ -972,8 +1019,10 @@ class TurboWhisper:
         # Components
         self.recorder = AudioRecorder(self.config)
         self.client = WhisperClient(self.config)
+        self.docker_service = DockerService(self.config)
         self.typer = Typer(typing_delay_ms=self.config.typing_delay_ms)
         self.signals = SignalBridge()
+        self.app.aboutToQuit.connect(self._stop_docker_service)
 
         # UI
         self.window = RecordingWindow(self.config)
@@ -988,6 +1037,7 @@ class TurboWhisper:
         self.signals.transcription_complete.connect(self._on_transcription_complete)
         self.signals.transcription_error.connect(self._on_transcription_error)
         self.signals.show_status.connect(self.window.set_status)
+        self.signals.docker_message.connect(self._on_docker_message)
         self.window.cancel_requested.connect(self._cancel_recording)
 
         # Timer to poll waveform data from recorder thread (avoids cross-thread signal issues)
@@ -1011,6 +1061,8 @@ class TurboWhisper:
             self.integration_server = IntegrationServer(self.config.claude_integration_port)
             if not self.integration_server.start():
                 self.integration_server = None
+
+        self._start_docker_service_async()
 
     def _setup_tray(self) -> None:
         """Set up system tray icon."""
@@ -1054,6 +1106,37 @@ class TurboWhisper:
         if reason in (QSystemTrayIcon.ActivationReason.Trigger,
                       QSystemTrayIcon.ActivationReason.DoubleClick):
             self._show_window()
+
+    def _start_docker_service_async(self) -> None:
+        """Start configured Docker service without blocking the Qt UI."""
+        if not self.config.docker_autostart or not self.config.docker_run_command.strip():
+            return
+
+        self.tray.showMessage(
+            "Turbo Whisper",
+            "Starting local Whisper Docker server...",
+            QSystemTrayIcon.MessageIcon.Information,
+            2500,
+        )
+
+        def start_docker():
+            result = self.docker_service.start()
+            if result.skipped:
+                return
+            level = "info" if result.ok else "error"
+            self.signals.docker_message.emit(level, result.message)
+
+        threading.Thread(target=start_docker, daemon=True).start()
+
+    def _on_docker_message(self, level: str, message: str) -> None:
+        """Show Docker lifecycle messages from the worker thread."""
+        icon = (
+            QSystemTrayIcon.MessageIcon.Information
+            if level == "info"
+            else QSystemTrayIcon.MessageIcon.Warning
+        )
+        title = "Turbo Whisper" if level == "info" else "Turbo Whisper - Docker"
+        self.tray.showMessage(title, message, icon, 3500)
 
     def _update_icons(self, recording: bool) -> None:
         """Update all icons based on recording state."""
@@ -1335,8 +1418,19 @@ class TurboWhisper:
             self.hotkey_manager.stop()
         if self.integration_server:
             self.integration_server.stop()
+        self._stop_docker_service()
         self.recorder.cleanup()
         self.app.quit()
+
+    def _stop_docker_service(self) -> None:
+        """Stop Docker service if this app session started it."""
+        if self.docker_service.stop():
+            self.tray.showMessage(
+                "Turbo Whisper",
+                "Stopped local Whisper Docker server",
+                QSystemTrayIcon.MessageIcon.Information,
+                1000,
+            )
 
     def run(self) -> int:
         """Run the application."""

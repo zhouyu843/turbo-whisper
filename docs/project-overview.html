@@ -614,7 +614,7 @@
           </div>
           <div class="fact">
             <strong>识别核心</strong>
-            <span>调用 OpenAI Whisper 或自托管 faster-whisper-server。</span>
+            <span>调用 OpenAI Whisper，或自动启动并使用本地 faster-whisper-server。</span>
           </div>
           <div class="fact">
             <strong>输出结果</strong>
@@ -708,6 +708,10 @@
             <p>Whisper 客户端，使用 httpx 上传音频并拿回转写文本。</p>
           </div>
           <div class="module">
+            <code>docker_service.py</code>
+            <p>可选本地模型管理，按配置启动或复用 Docker Whisper 容器，并在退出时只停止本次会话启动的容器。</p>
+          </div>
+          <div class="module">
             <code>hotkey.py</code>
             <p>全局快捷键层，处理 Linux、macOS、Windows 上的触发逻辑。</p>
           </div>
@@ -742,7 +746,7 @@
         <div class="tab-panel" id="transcribe">
           <ul>
             <li>Whisper 支持多语言识别，配置里可设置语言。</li>
-            <li>可以使用 OpenAI 官方接口，也可以接自托管 faster-whisper-server。</li>
+            <li>可以使用 OpenAI 官方接口，也可以接自托管 faster-whisper-server；本地 Docker 服务可随应用启动。</li>
             <li>录音文件可跟随历史记录保存，便于回听和排查。</li>
           </ul>
         </div>
@@ -759,6 +763,7 @@
   "language": "en",
   "auto_paste": true,
   "copy_to_clipboard": true,
+  "docker_autostart": false,
   "waveform_color": "#84cc16"
 }</code></pre>
       </section>

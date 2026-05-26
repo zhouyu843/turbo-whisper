@@ -646,7 +646,7 @@
         <div class="operation-list">
           <div class="row">
             <div class="num">1</div>
-            <div><strong>启动应用</strong><span>应用创建 Qt 窗口和系统托盘，并启动全局热键监听。配置来自用户配置文件。</span></div>
+            <div><strong>启动应用</strong><span>应用创建 Qt 窗口和系统托盘，启动全局热键监听；如果启用 Docker autostart，会异步启动本地 Whisper 容器。</span></div>
           </div>
           <div class="row">
             <div class="num">2</div>
@@ -674,6 +674,7 @@
         <p>这些是现在代码里已经存在或配置文件里支持的设置。</p>
         <div class="settings-list">
           <div class="row"><div class="dot"></div><div><strong>API</strong><span><code>api_url</code> 和 <code>api_key</code>，支持 OpenAI 或自托管 faster-whisper-server。</span></div></div>
+          <div class="row"><div class="dot"></div><div><strong>Docker</strong><span><code>docker_autostart</code>、容器名和 <code>docker_run_command</code>，用于可选管理本地 Whisper 服务。</span></div></div>
           <div class="row"><div class="dot"></div><div><strong>热键</strong><span><code>hotkey</code>，非 Windows 默认 <code>Alt+Space</code>，Windows 默认 <code>F8</code>。</span></div></div>
           <div class="row"><div class="dot"></div><div><strong>音频</strong><span>采样率、声道、chunk size、输入设备、麦克风增益。</span></div></div>
           <div class="row"><div class="dot amber"></div><div><strong>界面</strong><span>窗口宽高、背景颜色、波形颜色、录音时是否显示窗口。</span></div></div>
@@ -690,7 +691,7 @@
           <div class="table-row"><b>Show Window</b><span>手动显示悬浮窗口。</span></div>
           <div class="table-row"><b>Start Recording</b><span>从托盘菜单开始或停止录音。</span></div>
           <div class="table-row"><b>Settings...</b><span>打开窗口并展开设置面板。</span></div>
-          <div class="table-row"><b>Quit</b><span>停止热键、录音资源和集成服务，然后退出。</span></div>
+          <div class="table-row"><b>Quit</b><span>停止热键、录音资源、集成服务；如果本次会话启动过 Docker 容器，也会按配置停止它。</span></div>
         </div>
       </article>
     </section>
@@ -703,6 +704,7 @@
         <div class="row"><div class="dot"></div><div><strong><code>config.py</code></strong><span>配置默认值、配置文件路径、历史记录和录音文件保存。</span></div></div>
         <div class="row"><div class="dot"></div><div><strong><code>recorder.py</code></strong><span>麦克风设备、PyAudio 录音、声音级别和 WAV 输出。</span></div></div>
         <div class="row"><div class="dot amber"></div><div><strong><code>api.py</code></strong><span>把音频上传到 Whisper API，并把返回 JSON 里的 text 取出来。</span></div></div>
+        <div class="row"><div class="dot amber"></div><div><strong><code>docker_service.py</code></strong><span>可选 Docker 生命周期管理：启动、复用、等待端口就绪和退出时停止。</span></div></div>
         <div class="row"><div class="dot amber"></div><div><strong><code>hotkey.py</code></strong><span>跨平台全局热键监听。</span></div></div>
         <div class="row"><div class="dot rose"></div><div><strong><code>typer.py</code> / <code>integration_server.py</code></strong><span>自动输入、剪贴板，以及 Claude Code ready/busy 本地 HTTP 信号。</span></div></div>
       </div>
