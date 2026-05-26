@@ -1,6 +1,6 @@
-# CLAUDE.md
+# Agent Instructions
 
-This file provides guidance to Claude Code when working with this repository.
+This file provides guidance to AI coding agents, including Codex and Claude Code, when working with this repository.
 
 ## Project Overview
 
@@ -112,7 +112,7 @@ When testing changes:
 The app spawns multiple processes that must ALL be killed:
 - Python process: `turbo_whisper.main` or `turbo-whisper`
 - uv wrapper: `uv run turbo-whisper`
-- Parent shell wrappers (when run from Claude)
+- Parent shell wrappers (when run from an agent)
 
 **Reliable kill command:**
 ```bash
@@ -128,9 +128,9 @@ pgrep -af "turbo.whisper" || echo "All killed"
 - Catches: `turbo-whisper`, `turbo_whisper.main`, `uv run turbo-whisper`
 - Does NOT match other turbo projects (e.g., `turbo-translator`)
 
-### Running the App (for Claude)
+### Running the App (for Agents)
 
-Claude CAN run the app using background execution. The display and D-Bus session are accessible.
+Agents CAN run the app using background execution. The display and D-Bus session are accessible.
 
 ```bash
 # Kill existing instances first, then start in background
@@ -226,3 +226,9 @@ The desktop file includes `X-GNOME-Autostart-enabled=true`. Users enable autosta
 ```bash
 cp /usr/share/applications/turbo-whisper.desktop ~/.config/autostart/
 ```
+
+## Chinese Conversation Answer
+
+当用户用中文提出问题或请求时，优先用中文回答。回答要自然、简洁、直接，既说明做了什么，也说明下一步如何验证。示例：
+
+> 好的，我会先查看相关文件，确认现有结构后再修改。改完后我会运行合适的检查，并把变更点和验证结果用中文告诉你。
