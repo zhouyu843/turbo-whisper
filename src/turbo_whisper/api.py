@@ -17,6 +17,18 @@ class WhisperClient:
     def __init__(self, config: Config):
         self.config = config
 
+    def _transcription_data(self) -> dict[str, str]:
+        """Build multipart form fields; omit language for auto-detection."""
+        data = {
+            "model": "whisper-1",  # Ignored by faster-whisper-server but required by OpenAI
+            "response_format": "json",
+            "prompt": "Use proper punctuation: commas, periods, question marks.",
+        }
+        language = self.config.language.strip().lower()
+        if language and language != "auto":
+            data["language"] = self.config.language.strip()
+        return data
+
     async def transcribe(self, audio_data: bytes) -> str:
         """
         Send audio to Whisper API and return transcription.
@@ -35,12 +47,7 @@ class WhisperClient:
             "file": ("audio.wav", audio_data, "audio/wav"),
         }
 
-        data = {
-            "model": "whisper-1",  # Ignored by faster-whisper-server but required by OpenAI
-            "language": self.config.language,
-            "response_format": "json",
-            "prompt": "Use proper punctuation: commas, periods, question marks.",
-        }
+        data = self._transcription_data()
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -74,12 +81,7 @@ class WhisperClient:
             "file": ("audio.wav", audio_data, "audio/wav"),
         }
 
-        data = {
-            "model": "whisper-1",
-            "language": self.config.language,
-            "response_format": "json",
-            "prompt": "Use proper punctuation: commas, periods, question marks.",
-        }
+        data = self._transcription_data()
 
         try:
             with httpx.Client(timeout=30.0) as client:
